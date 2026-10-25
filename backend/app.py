@@ -1,3 +1,9 @@
+from backend.database import (
+    criar_tabela,
+    listar_favoritos,
+    adicionar_favorito,
+    remover_favorito
+)
 import os
 from pathlib import Path
 
@@ -14,6 +20,8 @@ app = Flask(
     static_folder=str(FRONTEND_DIR),
     static_url_path="/static"
 )
+
+criar_tabela()
 
 @app.route("/")
 def inicio():
@@ -85,6 +93,53 @@ def buscar_paises():
             "erro": "A API retornou uma resposta inválida."
         }), 502
 
+@app.route("/api/favoritos", methods=["GET"])
+def obter_favoritos():
+    return jsonify(listar_favoritos())
+
+
+@app.route("/api/favoritos", methods=["POST"])
+def salvar_favorito():
+    pais = request.get_json(silent=True)
+
+    if not isinstance(pais, dict):
+        return jsonify({"erro": "Dados do país inválidos."}), 400
+
+    campos = ["nome", "capital", "populacao", "bandeira"]
+
+    if not all(campo in pais for campo in campos):
+        return jsonify({"erro": "Dados incompletos do país."}), 400
+
+    if not all(
+        isinstance(pais[campo], str) and pais[campo].strip()
+        for campo in ["nome", "capital", "bandeira"]
+    ):
+        return jsonify({"erro": "Dados de texto inválidos."}), 400
+
+    if (
+        not isinstance(pais["populacao"], int)
+        or isinstance(pais["populacao"], bool)
+        or pais["populacao"] < 0
+    ):
+        return jsonify({"erro": "População inválida."}), 400
+
+    try:
+        adicionar_favorito(pais)
+        return jsonify({"mensagem": "País salvo nos favoritos."}), 201
+    except Exception:
+        app.logger.exception("Erro ao salvar favorito")
+        return jsonify({"erro": "Não foi possível salvar o favorito."}), 500
+
+
+@app.route("/api/favoritos/<path:nome>", methods=["DELETE"])
+def excluir_favorito(nome):
+    if not nome.strip():
+        return jsonify({"erro": "Nome do país inválido."}), 400
+
+    if remover_favorito(nome):
+        return jsonify({"mensagem": "Favorito removido com sucesso."})
+
+    return jsonify({"erro": "País não encontrado nos favoritos."}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
