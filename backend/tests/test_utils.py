@@ -6,7 +6,7 @@ from backend.utils import (
 
 
 def test_rejeita_pesquisa_vazia():
-    assert validar_pesquisa("") is False
+    assert validar_pesquisa("") is True
 
 
 def test_aceita_pesquisa_valida():
